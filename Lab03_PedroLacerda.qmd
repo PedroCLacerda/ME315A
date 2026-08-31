@@ -1,0 +1,98 @@
+---
+title: "Lab03_PedroLacerda"
+author: "Pedro da Costa Lacerda"
+format: pdf
+editor: visual
+---
+
+1)  
+
+```{r}
+library(readr)
+library(dplyr)
+library(tidyr) 
+
+airlines <- read_csv("airlines.csv")
+
+airports <- read_csv("airports.csv", 
+                     col_select = c(IATA_CODE, CITY, STATE, LATITUDE, LONGITUDE))
+
+processa_bloco <- function(df, pos) {
+  df %>%
+    filter(!startsWith(as.character(DESTINATION_AIRPORT), "1")) %>%
+    drop_na() %>%
+    group_by(DESTINATION_AIRPORT) %>%
+    summarise(
+      soma_atrasos = sum(ARRIVAL_DELAY),
+      qtd_voos = n(),
+      .groups = "drop"
+    )
+}
+
+flights_estatisticas <- read_csv_chunked(
+  file = "flights.csv",
+  callback = DataFrameCallback$new(processa_bloco),
+  chunk_size = 1000000,
+  col_types = cols_only(
+    DESTINATION_AIRPORT = col_character(),
+    ARRIVAL_DELAY = col_double()
+  )
+)
+
+flights <- flights_estatisticas %>%
+  group_by(DESTINATION_AIRPORT) %>%
+  summarise(
+    soma_total = sum(soma_atrasos),
+    qtd_total = sum(qtd_voos),
+    media_atraso = soma_total / qtd_total, 
+    .groups = "drop"
+  )
+
+head(flights)
+```
+
+2)  
+
+```{r}
+aeroportos_ausentes <- anti_join(flights, airports, by = c("DESTINATION_AIRPORT" = "IATA_CODE"))
+
+aeroportos_ausentes
+
+flights <- left_join(
+  x = flights, 
+  y = select(airports, IATA_CODE, CITY, STATE), 
+  by = c("DESTINATION_AIRPORT" = "IATA_CODE") 
+)
+
+head(flights)
+```
+
+3)  
+
+```{r}
+aeroportos_por_estado <- airports %>%
+  count(STATE, name = "quantidade_aeroportos", sort = TRUE)
+
+aeroportos_por_estado
+```
+
+4)  
+
+```{r}
+library(leaflet)
+
+flights <- left_join(flights, 
+                     select(airports, IATA_CODE, LATITUDE, LONGITUDE), 
+                     by = c("DESTINATION_AIRPORT" = "IATA_CODE"))
+
+flights_mapa <- flights %>% drop_na(LATITUDE, LONGITUDE)
+
+this <- leaflet(data = flights_mapa) %>%
+  addTiles() %>%
+  addMarkers(
+    lng = ~LONGITUDE, 
+    lat = ~LATITUDE
+  )
+
+this
+```
