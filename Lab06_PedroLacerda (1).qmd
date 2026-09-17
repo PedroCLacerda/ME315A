@@ -1,0 +1,93 @@
+---
+title: "Lab06_PedroLacerda"
+author: "Pedro da Costa Lacerda"
+format: pdf
+editor: visual
+---
+
+1)
+```{r}
+library(DBI)
+library(RSQLite)
+library(dplyr)
+
+path <- "/cloud/project"
+fname <- file.path(path, "disco.db")
+```
+
+2)
+```{r}
+conn <- dbConnect(SQLite(), fname)
+```
+
+3)
+```{r}
+dbListTables(conn)
+```
+
+4)
+```{r}
+dbListFields(conn, "customers")
+```
+
+5)
+```{r}
+dbGetQuery(conn, "
+  SELECT COUNT(*) FROM CUSTOMERS
+")
+```
+
+6)
+```{r}
+dbGetQuery(conn, "
+  SELECT COUNT(DISTINCT country) FROM CUSTOMERS
+")
+```
+
+7)
+```{r}
+dbGetQuery(conn, "
+  SELECT COUNTRY, COUNT(*) FROM CUSTOMERS
+  GROUP BY COUNTRY 
+  ORDER BY COUNT(*) DESC
+")
+```
+
+8)
+```{r}
+dbGetQuery(conn, "
+  SELECT COUNTRY, COUNT(*) FROM CUSTOMERS 
+  GROUP BY COUNTRY 
+  ORDER BY COUNT(*) DESC 
+  LIMIT 5
+")
+```
+
+9)
+```{r}
+dbGetQuery(conn, "
+  SELECT DISTINCT COUNTRY FROM CUSTOMERS
+  WHERE COUNTRY GLOB '??????'
+")
+```
+
+10)
+```{r}
+dbGetQuery(conn, "
+  SELECT DISTINCT t.Name FROM customers c
+  INNER JOIN invoices i ON c.CustomerId = i.CustomerId
+  INNER JOIN invoice_items ii ON i.InvoiceId = ii.InvoiceId
+  INNER JOIN tracks t ON ii.TrackId = t.TrackId
+  WHERE c.Country IN ('Brazil', 'Brasil')
+")
+```
+
+```{r}
+dbDisconnect(conn)
+```
+
+```{r}
+Sys.setenv(TZ = "America/Sao_Paulo")
+Sys.time()
+```
+
