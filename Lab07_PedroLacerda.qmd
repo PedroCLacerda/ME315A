@@ -1,0 +1,106 @@
+---
+title: "Lab07_PedroLacerda"
+author: "Pedro da Costa Lacerda"
+format: pdf
+editor: visual
+---
+
+1)
+```{r}
+library(RSQLite)
+
+conn <- dbConnect(SQLite(), "database.sqlite3")
+```
+
+2)
+```{r}
+query_professores <- "
+  SELECT DISTINCT i.id, i.name
+  FROM instructors i
+  JOIN teachings t ON i.id = t.instructor_id
+  JOIN sections sec ON t.section_uuid = sec.uuid
+  JOIN course_offerings co ON sec.course_offering_uuid = co.uuid
+  JOIN subject_memberships sm ON co.uuid = sm.course_offering_uuid
+  JOIN subjects s ON sm.subject_code = s.code
+  WHERE s.abbreviation = 'STAT'
+  ORDER BY i.name
+"
+
+professores_stat <- dbGetQuery(conn, query_professores)
+cat("Quantidade de professores:", nrow(professores_stat), "\n")
+print(professores_stat)
+```
+
+3)
+```{r}
+query_gpa_professores <- "
+  SELECT i.name,
+         SUM(gd.a_count * 4.0 + gd.ab_count * 3.5 + gd.b_count * 3.0 + 
+             gd.bc_count * 2.5 + gd.c_count * 2.0 + gd.d_count * 1.0) * 1.0 /
+         SUM(gd.a_count + gd.ab_count + gd.b_count + 
+             gd.bc_count + gd.c_count + gd.d_count + gd.f_count) AS avg_gpa
+  FROM instructors i
+  JOIN teachings t ON i.id = t.instructor_id
+  JOIN sections sec ON t.section_uuid = sec.uuid
+  JOIN course_offerings co ON sec.course_offering_uuid = co.uuid
+  JOIN grade_distributions gd ON co.uuid = gd.course_offering_uuid
+  JOIN subject_memberships sm ON co.uuid = sm.course_offering_uuid
+  JOIN subjects s ON sm.subject_code = s.code
+  WHERE s.abbreviation = 'STAT'
+  GROUP BY i.id, i.name
+  HAVING SUM(gd.a_count + gd.ab_count + gd.b_count + 
+             gd.bc_count + gd.c_count + gd.d_count + gd.f_count) > 0
+  ORDER BY avg_gpa ASC
+"
+
+gpa_professores <- dbGetQuery(conn, query_gpa_professores)
+
+prof_mais_dificil <- head(gpa_professores, 1)
+prof_mais_facil   <- tail(gpa_professores, 1)
+
+cat("Professor mais difícil (menor GPA ponderado):\n")
+print(prof_mais_dificil)
+
+cat("\nProfessor mais fácil (maior GPA ponderado):\n")
+print(prof_mais_facil)
+
+query_gpa_disciplinas <- "
+  SELECT c.number, c.name,
+         SUM(gd.a_count * 4.0 + gd.ab_count * 3.5 + gd.b_count * 3.0 + 
+             gd.bc_count * 2.5 + gd.c_count * 2.0 + gd.d_count * 1.0) * 1.0 /
+         SUM(gd.a_count + gd.ab_count + gd.b_count + 
+             gd.bc_count + gd.c_count + gd.d_count + gd.f_count) AS avg_gpa
+  FROM courses c
+  JOIN course_offerings co ON c.uuid = co.course_uuid
+  JOIN grade_distributions gd ON co.uuid = gd.course_offering_uuid
+  JOIN subject_memberships sm ON co.uuid = sm.course_offering_uuid
+  JOIN subjects s ON sm.subject_code = s.code
+  WHERE s.abbreviation = 'STAT'
+  GROUP BY c.uuid, c.name
+  HAVING SUM(gd.a_count + gd.ab_count + gd.b_count + 
+             gd.bc_count + gd.c_count + gd.d_count + gd.f_count) > 0
+  ORDER BY avg_gpa ASC
+"
+
+gpa_disciplinas <- dbGetQuery(conn, query_gpa_disciplinas)
+
+disciplina_mais_dificil <- head(gpa_disciplinas, 1)
+disciplina_mais_facil   <- tail(gpa_disciplinas, 1)
+
+cat("\nDisciplina mais difícil (menor GPA ponderado):\n")
+print(disciplina_mais_dificil)
+
+cat("\nDisciplina mais fácil (maior GPA ponderado):\n")
+print(disciplina_mais_facil)
+```
+
+4)
+```{r}
+dbDisconnect(conn)
+```
+
+```{r}
+Sys.setenv(TZ = "America/Sao_Paulo")
+Sys.time()
+```
+
